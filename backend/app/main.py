@@ -6,18 +6,18 @@ from .models import Ticket
 from .routes import router
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI(...)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "https://ticket-iq-v2-l6b02y4jt-saanvi19.vercel.app",
+        "https://ticket-iq-v2.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 Base.metadata.create_all(bind=engine)
 ensure_sqlite_columns(Ticket.__table__)
