@@ -10,9 +10,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "https://ticket-iq-v2-l6b02y4jt-saanvi19.vercel.app",
-        "https://ticket-iq-v2.vercel.app",
+    "http://localhost:5173",
+    "https://ticket-iq-v2-git-main-saanvi19.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
