@@ -12,6 +12,7 @@ app.add_middleware(
     allow_origins=[
     "http://localhost:5173",
     "https://ticket-iq-v2.vercel.app",
+    "https://ticket-iq-v2-ew4p3kjnv-saanvi19.vercel.app",
 ],
     allow_credentials=True,
     allow_methods=["*"],
