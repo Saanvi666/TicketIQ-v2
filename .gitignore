@@ -1,8 +1,16 @@
-__pycache__/
-*.pyc
 .env
 .venv/
 venv/
 node_modules/
 *.db
 .vscode/
+
+# Gmail OAuth credentials and user tokens
+backend/credentials.json
+backend/token.json
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*.log
+backend/token.json.backup
