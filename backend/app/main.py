@@ -4,6 +4,19 @@ from sqlalchemy import text
 from .database import Base, engine, ensure_sqlite_columns, remove_sqlite_columns
 from .models import Ticket
 from .routes import router
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 Base.metadata.create_all(bind=engine)
 ensure_sqlite_columns(Ticket.__table__)
@@ -41,3 +54,4 @@ def read_root() -> dict[str, str]:
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}
+
