@@ -10,10 +10,9 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "http://localhost:5173",
-    "https://ticket-iq-v2.vercel.app",
-    "https://ticket-iq-v2-ew4p3kjnv-saanvi19.vercel.app",
-],
+        "http://localhost:5173",
+    ],
+    allow_origin_regex=r"https://ticket-iq-v2.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
