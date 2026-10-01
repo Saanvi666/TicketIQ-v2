@@ -1,4 +1,6 @@
 import base64
+import json
+import os
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -19,38 +21,98 @@ _CREDENTIALS_PATH = _BACKEND_DIR / "credentials.json"
 _TOKEN_PATH = _BACKEND_DIR / "token.json"
 
 
+def _load_render_credentials() -> Credentials | None:
+    """
+    Load Gmail OAuth credentials from the GMAIL_TOKEN_JSON
+    environment variable when running on a hosted service.
+    """
+    token_json = os.getenv("GMAIL_TOKEN_JSON")
+
+    if not token_json:
+        return None
+
+    try:
+        token_data = json.loads(token_json)
+
+        return Credentials.from_authorized_user_info(
+            token_data,
+            SCOPES,
+        )
+    except (json.JSONDecodeError, ValueError, TypeError) as error:
+        raise RuntimeError(
+            "GMAIL_TOKEN_JSON is not valid Gmail OAuth token JSON."
+        ) from error
+
+
 def get_gmail_service() -> Resource:
-    """Return an authenticated Gmail API client, refreshing or creating credentials as needed."""
+    """
+    Return an authenticated Gmail API client.
+
+    Local development:
+        Uses backend/token.json and credentials.json.
+
+    Render/hosted deployment:
+        Uses the GMAIL_TOKEN_JSON environment variable.
+    """
+
     credentials = None
 
-    if _TOKEN_PATH.exists():
+    # --------------------------------------------------
+    # 1. Hosted deployment
+    # --------------------------------------------------
+
+    credentials = _load_render_credentials()
+
+    # --------------------------------------------------
+    # 2. Local development
+    # --------------------------------------------------
+
+    if credentials is None and _TOKEN_PATH.exists():
         credentials = Credentials.from_authorized_user_file(
             str(_TOKEN_PATH),
             SCOPES,
         )
 
-    if credentials is None or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            if not _CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    f"Gmail OAuth credentials not found at {_CREDENTIALS_PATH}"
-                )
+    # --------------------------------------------------
+    # 3. Refresh existing credentials
+    # --------------------------------------------------
 
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(_CREDENTIALS_PATH),
-                SCOPES,
+    if credentials is not None and not credentials.valid:
+
+        if credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+
+        else:
+            credentials = None
+
+    # --------------------------------------------------
+    # 4. Local OAuth authorization
+    # --------------------------------------------------
+
+    if credentials is None:
+
+        if not _CREDENTIALS_PATH.exists():
+            raise FileNotFoundError(
+                f"Gmail OAuth credentials not found at {_CREDENTIALS_PATH}"
             )
 
-            credentials = flow.run_local_server(port=0)
+        flow = InstalledAppFlow.from_client_secrets_file(
+            str(_CREDENTIALS_PATH),
+            SCOPES,
+        )
+
+        credentials = flow.run_local_server(port=0)
 
         _TOKEN_PATH.write_text(
             credentials.to_json(),
             encoding="utf-8",
         )
 
-    return build("gmail", "v1", credentials=credentials)
+    return build(
+        "gmail",
+        "v1",
+        credentials=credentials,
+    )
 
 
 def send_ticket_reply(
