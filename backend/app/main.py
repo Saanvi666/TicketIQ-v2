@@ -1,13 +1,36 @@
 from fastapi import FastAPI
-from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import Base, engine, ensure_sqlite_columns, remove_sqlite_columns
+from .database import (
+    Base,
+    engine,
+    ensure_sqlite_columns,
+    initialize_database,
+    remove_sqlite_columns,
+)
 from .models import Ticket
 from .routes import router
 
 
+# --------------------------------------------------
+# Database initialization
+# --------------------------------------------------
+
+# Import models before creating tables so SQLAlchemy
+# knows about all registered models.
+initialize_database()
+
+
+# --------------------------------------------------
+# FastAPI application
+# --------------------------------------------------
+
 app = FastAPI(title="TicketIQ API")
+
+
+# --------------------------------------------------
+# CORS
+# --------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,16 +43,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ... your existing database code ...
+
+# --------------------------------------------------
+# Database compatibility / migrations
+# --------------------------------------------------
+
+ensure_sqlite_columns(Ticket.__table__)
+
+# Remove obsolete columns if they exist from an
+# earlier version of TicketIQ.
+remove_sqlite_columns(
+    Ticket.__table__,
+    {
+        "assigned_team",
+        "assigned_agent",
+        "sla_due_at",
+        "sla_state",
+    },
+)
+
+
+# --------------------------------------------------
+# Routes
+# --------------------------------------------------
 
 app.include_router(router, prefix="/api")
 
 
-@app.get("/")
-def read_root() -> dict[str, str]:
-    return {"message": "TicketIQ API is running"}
-
+# --------------------------------------------------
+# Health check
+# --------------------------------------------------
 
 @app.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "healthy"}
+def health_check():
+    return {"status": "ok"}

@@ -10,14 +10,25 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ticketiq.db")
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+engine_kwargs = {}
 
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
 
 Base = declarative_base()
+
+
+def initialize_database() -> None:
+    """Create all database tables defined by the SQLAlchemy models."""
+    Base.metadata.create_all(bind=engine)
 
 
 def ensure_sqlite_columns(table) -> None:
@@ -27,6 +38,7 @@ def ensure_sqlite_columns(table) -> None:
     existing_columns = {
         column["name"] for column in inspect(engine).get_columns(table.name)
     }
+
     missing_columns = [
         column
         for column in table.columns
@@ -51,7 +63,9 @@ def remove_sqlite_columns(table, column_names: set[str]) -> None:
     existing_columns = {
         column["name"] for column in inspect(engine).get_columns(table.name)
     }
+
     obsolete_columns = existing_columns.intersection(column_names)
+
     if not obsolete_columns:
         return
 
@@ -64,6 +78,7 @@ def remove_sqlite_columns(table, column_names: set[str]) -> None:
 
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
+
     try:
         yield db
     finally:
