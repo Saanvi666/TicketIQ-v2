@@ -48,11 +48,30 @@ def ensure_sqlite_columns(table) -> None:
     if not missing_columns:
         return
 
+    preparer = engine.dialect.identifier_preparer
+    table_name = preparer.quote(table.name)
+
     with engine.begin() as connection:
         for column in missing_columns:
             column_type = column.type.compile(dialect=engine.dialect)
+            column_name = preparer.quote(column.name)
+            column_definition = f"{column_name} {column_type}"
+
+            if column.server_default is not None:
+                default = column.server_default.arg
+                if isinstance(default, str):
+                    default_sql = default
+                else:
+                    default_sql = str(
+                        default.compile(
+                            dialect=engine.dialect,
+                            compile_kwargs={"literal_binds": True},
+                        )
+                    )
+                column_definition += f" DEFAULT {default_sql}"
+
             connection.exec_driver_sql(
-                f"ALTER TABLE {table.name} ADD COLUMN {column.name} {column_type}"
+                f"ALTER TABLE {table_name} ADD COLUMN {column_definition}"
             )
 
 

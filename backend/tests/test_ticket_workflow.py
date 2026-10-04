@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import json
+import re
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
@@ -122,11 +123,42 @@ class TicketWorkflowTests(unittest.TestCase):
             email_body = generate_resolution_email(ticket, conversation)
         payload = json.loads(openrouter.call_args.args[0].data.decode("utf-8"))
         prompt = payload["messages"][0]["content"] + payload["messages"][1]["content"]
+        prompt_lower = prompt.lower()
         self.assertNotIn(ticket.ticket_id, prompt)
         self.assertNotIn("review_status", prompt)
-        self.assertIn("do not mention ai", prompt.lower())
-        self.assertIn("reply 'yes - issue solved'", prompt.lower())
-        self.assertIn("no - issue not solved", prompt.lower())
+        prohibition = re.search(
+            r"\b(?:do not|don't|never)\s+"
+            r"(?:mention|include|expose|reveal|share)\b"
+            r"[\s\S]{0,80}\binternal\b",
+            prompt_lower,
+        )
+        self.assertIsNotNone(prohibition)
+        assert prohibition is not None
+        internal_info = prompt_lower[prohibition.start():].split("\n\n", 1)[0]
+        self.assertIn("ticketiq", internal_info)
+        self.assertRegex(internal_info, r"\bai\b")
+        self.assertRegex(internal_info, r"\bticket ids?\b")
+        self.assertTrue(
+            "classification" in internal_info or "category" in internal_info
+        )
+        self.assertIn("confidence", internal_info)
+        self.assertIn("similarity", internal_info)
+        self.assertIn("priority", internal_info)
+        self.assertIn("routing", internal_info)
+        self.assertIn("assigned team", internal_info)
+        self.assertIn("agent review", internal_info)
+        self.assertIn("internal status", internal_info)
+        self.assertRegex(
+            prompt_lower,
+            r"\b(?:reply|respond)\b[\s\S]{0,80}\byes\b"
+            r"[\s\S]{0,80}\b(?:resolved|solved|fixed|addressed)\b",
+        )
+        self.assertRegex(
+            prompt_lower,
+            r"\b(?:reply|respond)\b[\s\S]{0,80}\bno\b"
+            r"[\s\S]{0,80}\b(?:unresolved|not\s+"
+            r"(?:resolved|solved|fixed|addressed))\b",
+        )
         self.assertNotIn("localhost", email_body.lower())
         self.assertIn("TicketIQ Support", email_body)
 

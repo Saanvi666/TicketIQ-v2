@@ -36,6 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
     ],
     allow_origin_regex=r"https://ticket-iq-v2.*\.vercel\.app",
     allow_credentials=True,
@@ -48,14 +49,14 @@ app.add_middleware(
 # Database compatibility / migrations
 # --------------------------------------------------
 
-ensure_sqlite_columns(Ticket.__table__)
+for table in Base.metadata.sorted_tables:
+    ensure_sqlite_columns(table)
 
 # Remove obsolete columns if they exist from an
 # earlier version of TicketIQ.
 remove_sqlite_columns(
     Ticket.__table__,
     {
-        "assigned_team",
         "assigned_agent",
         "sla_due_at",
         "sla_state",

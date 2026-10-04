@@ -334,6 +334,32 @@ The frontend will then be available through the local Vite development server.
 
 ---
 
+## Render Deployment
+
+The root `render.yaml` defines the backend web service. Render installs
+`backend/requirements.txt` and starts the API with:
+
+```text
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Set `GMAIL_TOKEN_JSON` to the Gmail OAuth token JSON and `OPENROUTER_API_KEY`
+in the Render service environment. Do not upload or commit
+`backend/credentials.json` or `backend/token.json`; hosted Gmail OAuth reads
+`GMAIL_TOKEN_JSON`.
+
+For the Vercel frontend, set `VITE_API_BASE_URL` to
+`https://<your-render-service>.onrender.com/api` in the Vercel project
+environment and redeploy the frontend. The backend CORS configuration allows
+the local Vite origins and the TicketIQ Vercel application domains.
+
+Render's local SQLite file is suitable for a demo, but its filesystem is
+ephemeral unless a persistent disk is configured. A redeploy or instance
+replacement can therefore reset hosted ticket data; the local SQLite database
+is not changed by this deployment configuration.
+
+---
+
 ## Security
 
 Sensitive credentials are intentionally excluded from the repository.
@@ -345,6 +371,8 @@ The `.gitignore` file prevents files such as:
 credentials.json
 token.json
 *.db
+*.sqlite
+*.sqlite3
 .venv/
 node_modules/
 ```
@@ -405,4 +433,3 @@ TicketIQ provides an integrated workflow for managing customer support requests 
 By combining email integration, AI-based classification, agent review, automated customer communication, and customer-confirmed closure, the system reduces repetitive support tasks while keeping the final decision under human control.
 
 ```
-
